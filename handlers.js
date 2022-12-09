@@ -48,9 +48,13 @@ async function LogIn(req,res) {
 
         const pass= await db.query("select * from password where userID='"+result.rows[0].id+"'")// compare password table user id to user table id
         
+      
+
+
         if (pass.rows[0].password===user.password){ //compare password entered with password in table 
+            res.cookie("LoggerUserID",result.rows[0].id,{maxAge:600000});
             res.redirect("/PoliceView")
-        }
+         }
     
         else {res.status (403).send(`<h1> Wrong Password <h1>`)}
 
@@ -59,103 +63,122 @@ async function LogIn(req,res) {
 }
 //-------------------------------------------------------------------------------------------------------
 
-
-function Police_form(req,res) {// send the html page as a response
+function Police_form_create(req,res) {// send the html page as a response
 
     res.status(200).send(
-
-        `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <link rel="stylesheet" href="C3.css">
-            <meta charset="UTF-8">
+        Police_form_template("create",{type:'',location:'',date:'',time:'',userID:-1,description:'',title:''})// returns the html in create mode with the text "create" in the type 
         
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Document</title>
-        </head>
-        <body Id="Witness">
-            <h1> <span class="red">C</span>RIME <span class="red">C</span>ASE <span class="red">C</span>ENTER </h1>
-            <p class="tilt"> <span class="red">C</span>3</p>
-            <div class="center"> 
-            <div class="witness" id="LI-Container">
-                <h3> Police Input Form </h3>
-                 <form action="Police-input" method="POST">
-                <label for="CrimeID">Crime ID</label>
-                <input id="CrimeID" name="CrimeID" type="text">
-        
-               
-               <label for="CrimeDate">DATE</label>  <!--Crime Date search-->
-                <input id="CrimeDate" name="CrimeDate" type="date">
-        
-                <label for="Type">Choose Crime Type:</label> <!--crime type list-->
-                <select name="Type" id="Type">
-                  <option value="trafic">Trafic</option>
-                  <option value="murder">Murder</option>
-                  <option value="drugs">Drugs</option>
-                  <option value="shooting">Shooting</option>
-                </select>
-        
-                <label for="Location">Location</label> <!--location input-->
-                <input id="Location" name="Location" type="text">
-        
-                <label for="Time">Choose Time:</label> <!--time choice-->
-                <select name="Time" id="Time">
-                  <option value="01:00">00:00</option>
-                  <option value="01:00">01:00</option>
-                  <option value="02:00">02:00</option>
-                  <option value="03:00">03:00</option>
-                  <option value="04:00">04:00</option>
-                  <option value="05:00">05:00</option>
-                  <option value="06:00">06:00</option>
-                  <option value="07:00">07:00</option>
-                  <option value="08:00">08:00</option>
-                  <option value="09:00">09:00</option>
-                  <option value="10:00">10:00</option>
-                  <option value="11:00">11:00</option>
-                  <option value="12:00">12:00</option>
-                  <option value="13:00">13:00</option>
-                  <option value="14:00">14:00</option>
-                  <option value="15:00">15:00</option>
-                  <option value="16:00">16:00</option>
-                  <option value="17:00">17:00</option>
-                  <option value="18:00">18:00</option>
-                  <option value="19:00">19:00</option>
-                  <option value="20:00">20:00</option>
-                  <option value="21:00">21:00</option>
-                  <option value="22:00">22:00</option>
-                  <option value="23:00">23:00</option>
-                  
-                </select>
-        <br>
-                <label for="CrimeTitle">Crime Title</label><!--crime title input-->
-                <input class="CrimeTitle" id="CrimeTitle" name="CrimeTitle" type="text">
-        <br>
-                <textarea placeholder="Write Crime Details Here" id="text" name="text" type="text"></textarea><!--crime details input window-->
-               
-                <button type="submit">Create Case</button>
-              </form>
-        
-             
-             </div>
-            </div>
-         
-        
-        
-        </body>
-        </html>`
 
     )}
 
+    async function Police_form_edit(req,res) {// send the html page as a response
+        console.log(req.params.crimeID);
+        const ResultsItemDetails= await db.query(`select * from crime where id = ${req.params.crimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
+            const CaseItemDetails = ResultsItemDetails.rows[0]
+            console.log(CaseItemDetails)
+        res.status(200).send(
+            Police_form_template("edit",CaseItemDetails)// returns the html in Edit mode with the text "edit" in the type 
+            
+    
+        )}
 
+function Police_form_template(type,data){
+      let times=[];
+      for(let i=0;i<24;i++){
+        let time=i<10?"0"+i+":00":i+":00";
+        times.push(time)
+      }
+     let submitButtonText =  type==='edit'?'Save':'Create Crime';// switch the button name between save and creat depending on the form usage
+     let formAction =  type==='edit'?`/EditCrime/${data.id}`:'/CreateCrime';
+     return  `<!DOCTYPE html>
+     <html lang="en">
+     <head>
+         <link rel="stylesheet" href="/C3.css">
+         <meta charset="UTF-8">
+     
+         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+         <title>Document</title>
+     </head>
+     <body Id="Witness">
+         <h1> <span class="red">C</span>RIME <span class="red">C</span>ASE <span class="red">C</span>ENTER </h1>
+         <p class="tilt"> <span class="red">C</span>3</p>
+         <div class="center"> 
+         <div class="witness" id="LI-Container">
+             <h3> Police Input Form </h3>
+              <form action="${formAction}" method="POST">
+             <label for="CrimeID">Crime ID</label>
+             <input id="CrimeID" name="CrimeID" type="text" disabled value="${data.id?data.id:""}">
+     
+            
+            <label for="CrimeDate">DATE</label>  <!--Crime Date search-->
+             <input id="CrimeDate" name="CrimeDate" type="date" value="${data.date.toISOString().substring(0,10)}"><!--choosing the first 10 digits of the date format "2022-12-08T22:00:00.000Z"-->
+     
+             <label for="Type">Choose Crime Type:</label> <!--crime type list-->
+             <select name="Type" id="Type" value="${data.type}">
+               <option value="trafic" ${data.type.trim()=='trafic'&&'selected'}>Trafic</option>
+               <option value="murder" ${data.type.trim()=='murder'&&'selected'}>Murder</option>
+               <option value="drugs" ${data.type.trim()=='drugs'&&'selected'}>Drugs</option>
+               <option value="shooting" ${data.type.trim()=='shooting'&&'selected'}>Shooting</option>
+             </select>
+     
+             <label for="Location">Location</label> <!--location input-->
+             <input id="Location" name="Location" type="text" value="${data.location}">
+     
+             <label for="Time">Choose Time:</label> <!--time choice-->
+             <select name="Time" id="Time">
+               ${times.map(x=>`<option value="${x}" ${x===data.time.substring(0,5)?"selected":""}>${x}</option>`)}<!--gives list of hours and select the right hour when bringing time details to the edit form-->
+              
+             </select>
+     <br>
+             <label for="CrimeTitle">Crime Title</label><!--crime title input-->
+             <input class="CrimeTitle" id="CrimeTitle" name="CrimeTitle" type="text" value="${data.title}">
+     <br>
+             <textarea placeholder="Write Crime Details Here" id="text" name="text" type="text">${data.description}</textarea><!--crime details input window-->
+            
+             <button type="submit">${submitButtonText}</button>
+           </form>
+     
+          
+          </div>
+         </div>
+      
+     
+     
+     </body>
+     </html>`
+}
+
+
+async function EditCrime(req,res) {
+    const CrimeDetails=req.body;
+
+       console.log(CrimeDetails)
+   
+   await db.query(
+    `UPDATE crime SET type='${CrimeDetails.Type}',location='${CrimeDetails.Location}',date='${CrimeDetails.CrimeDate}',time='${CrimeDetails.Time}',userID=${req.cookies.LoggerUserID},description='${CrimeDetails.text}',title='${CrimeDetails.CrimeTitle}' where id=${req.params.crimeID}`//insert a crime item details from the create form in the DB crime table
+   )
+   res.redirect("/PoliceView")// redirect to the Police view page after creating a new case
+}
+    async function CreateCrime(req,res) {
+        const CrimeDetails=req.body;
+           
+       
+       await db.query(
+        `INSERT INTO crime (type,location,date,time,userID,description,title) VALUES ('${CrimeDetails.Type}', '${CrimeDetails.Location}', '${CrimeDetails.CrimeDate}', '${CrimeDetails.Time}','${req.cookies.LoggerUserID}','${CrimeDetails.text}','${CrimeDetails.CrimeTitle}')`//insert a crime item details from the create form in the DB crime table
+       )
+       res.redirect("/PoliceView")// redirect to the Police view page after creating a new case
+    }
 //--------------------------------------------------------------------------------------------------------------------
 
-function police_view(req,res) {// send the html page as a response
+async function police_view(req,res) {// send the html page as a response
+const CrimeListResult =await db.query( "select * from crime") //bring all crime DB
+const CrimeList = CrimeListResult.rows // represent crime items
 
     res.status(200).send(
         ` <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="C3.css">
+    <link rel="stylesheet" href="/C3.css"><!--"/" for css when placing it in public-->
     <meta charset="UTF-8">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"><!--import CSS icons folder online-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -179,11 +202,13 @@ function police_view(req,res) {// send the html page as a response
        
       
 <div id="CrimeList">
- <div class="CrimeItem">
-    <h4>title</h4> 
-    <a href="/PoliceForm" type="button"> <button class="edit"> <i class="fa fa-edit"></i>  </button></a><!--button link to edit page-->
-    
- </div>   
+
+ ${CrimeList.map(x=>`<div class="CrimeItem">
+ <h4>${x.title}</h4> 
+ <a href="/PoliceForm/${x.id}" type="button"> <button class="edit"> <i class="fa fa-edit"></i>  </button></a><!--button link to edit page-->
+ 
+</div>   `)}
+ 
 </div>
      
      </div>
@@ -195,6 +220,7 @@ function police_view(req,res) {// send the html page as a response
 </html>`
     )}
 
+    
 
 
 
@@ -203,10 +229,16 @@ function police_view(req,res) {// send the html page as a response
 
 function witness_form(req,res) {// send the html page as a response
 
+    let times=[];
+    for(let i=0;i<24;i++){
+      let time=i<10?"0"+i+":00":i+":00";
+      times.push(time)
+    }
+
     res.status(200).send(`<!DOCTYPE html>
     <html lang="en">
     <head>
-        <link rel="stylesheet" href="C3.css">
+        <link rel="stylesheet" href="/C3.css">
         <meta charset="UTF-8">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"><!--import CSS icons folder online-->
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -243,30 +275,8 @@ function witness_form(req,res) {// send the html page as a response
     
             <label for="Time">Choose Time:</label><!--time choice-->
             <select name="Time" id="Time">
-              <option value="01:00">00:00</option>
-              <option value="01:00">01:00</option>
-              <option value="02:00">02:00</option>
-              <option value="03:00">03:00</option>
-              <option value="04:00">04:00</option>
-              <option value="05:00">05:00</option>
-              <option value="06:00">06:00</option>
-              <option value="07:00">07:00</option>
-              <option value="08:00">08:00</option>
-              <option value="09:00">09:00</option>
-              <option value="10:00">10:00</option>
-              <option value="11:00">11:00</option>
-              <option value="12:00">12:00</option>
-              <option value="13:00">13:00</option>
-              <option value="14:00">14:00</option>
-              <option value="15:00">15:00</option>
-              <option value="16:00">16:00</option>
-              <option value="17:00">17:00</option>
-              <option value="18:00">18:00</option>
-              <option value="19:00">19:00</option>
-              <option value="20:00">20:00</option>
-              <option value="21:00">21:00</option>
-              <option value="22:00">22:00</option>
-              <option value="23:00">23:00</option>
+            ${times.map(x=>`<option value="${x}" >${x}</option>`)} <!--gives list of hours-->
+              
               
             </select>
             <button class="search"><i class="fa fa-search"></i></button> <!--search button icon-->
@@ -286,4 +296,4 @@ function witness_form(req,res) {// send the html page as a response
     </html>`)}
 
 
-module.exports= {C3_homepage,Police_form,police_view,witness_form,LogIn}; //export function
+module.exports= {C3_homepage,Police_form_create,Police_form_edit,police_view,witness_form,LogIn,CreateCrime,EditCrime}; //export function

@@ -17,7 +17,8 @@ CREATE TABLE crime (
   date date,
   time time,
   userID int REFERENCES users(id),
-  description text
+  description text,
+  title varchar(255)
 );
 
 CREATE TABLE witness (
