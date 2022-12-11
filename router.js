@@ -12,9 +12,12 @@ router.get('/WitnessForm', handlers.witness_form)
 
 router.get('/PoliceView', handlers.police_view)
 
+router.get('/Police_Form_View/:crimeID', handlers.police_form_view)
 router.post('/LogIn', handlers.LogIn)// direct the loin details to the login handler to verify uers/pass
 
 router.post('/CreateCrime',handlers.CreateCrime ) // direct the Police loged in to a create crime form
 router.post('/EditCrime/:crimeID',handlers.EditCrime ) 
-
+router.post('/addWitnessInput/:crimeID',handlers.saveWitnessInput ) 
+router.post('/searchCrime', handlers.searchCrime)
+router.post('/policeSearchCrime', handlers.policeSearchCrime)
 module.exports = router;
