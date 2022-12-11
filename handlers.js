@@ -46,13 +46,13 @@ async function LogIn(req,res) {
 
     else {
 
-        const pass= await db.query("select * from password where userID='"+result.rows[0].id+"'")// compare password table user id to user table id
+        const pass= await db.query("select * from password where userID='"+result.rows[0].id+"'")// bring the password with the specific user ID per the user
         
       
 
 
         if (pass.rows[0].password===user.password){ //compare password entered with password in table 
-            res.cookie("LoggerUserID",result.rows[0].id,{maxAge:600000});
+            res.cookie("LoggerUserID",result.rows[0].id,{maxAge:600000}); // to be able to know who loged in and make a change 
             res.redirect("/PoliceView")
          }
     
@@ -62,6 +62,7 @@ async function LogIn(req,res) {
   
 }
 //-------------------------------------------------------------------------------------------------------
+//----------------------case creat form------------------------------------
 
 function Police_form_create(req,res) {// send the html page as a response
 
@@ -72,22 +73,23 @@ function Police_form_create(req,res) {// send the html page as a response
     )}
 
     async function Police_form_edit(req,res) {// send the html page as a response
-        console.log(req.params.crimeID);
-        const ResultsItemDetails= await db.query(`select * from crime where id = ${req.params.crimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
-            const CaseItemDetails = ResultsItemDetails.rows[0]
-            console.log(CaseItemDetails)
+      
+        const ResultsItemDetails= await db.query(`select * from crime where id = ${req.params.crimeID}`) // (URL ->params , Post-> body) use crime ID send in the URL and pull the relevant details from the DB per this ID
+            const CaseItemDetails = ResultsItemDetails.rows[0] //query returns object that includes array with all results of the select
+           
         res.status(200).send(
             Police_form_template("edit",CaseItemDetails)// returns the html in Edit mode with the text "edit" in the type 
-            
-    
+        
         )}
+
+
 async function police_form_view(req,res){
     const ResultsItemDetails= await db.query(`select * from crime where id = ${req.params.crimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
     const CaseItemDetails = ResultsItemDetails.rows[0];
     const ResultsWitnessInput= await db.query(`select description from witness where crimeID = ${req.params.crimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
-    const WitnessInputs = ResultsWitnessInput.rows.map(x=>x.description).join("\r\n ******************************************************\r\n");
+    const WitnessInputs = ResultsWitnessInput.rows.map(x=>x.description).join("\r\n ******************************************************\r\n"); // border between details and witness text
     res.status(200).send(
-        Police_form_template("view",CaseItemDetails,WitnessInputs)// returns the html in Edit mode with the text "edit" in the type 
+        Police_form_template("view",CaseItemDetails,WitnessInputs)// returns the html in Edit mode with the text "view" in the type 
         
 
     )
@@ -95,10 +97,10 @@ async function police_form_view(req,res){
 function Police_form_template(type,data,witnessData=""){
       let times=[];
       for(let i=0;i<24;i++){
-        let time=i<10?"0"+i+":00":i+":00";
+        let time=i<10?"0"+i+":00":i+":00";// if i < 10 return "0"+i+"    else  i+":00"
         times.push(time)
       }
-      console.log(data);
+      
      let submitButtonText =  type==='edit'?'Save':'Create Crime';// switch the button name between save and creat depending on the form usage
      let formAction =  type==='edit'?`/EditCrime/${data.id}`:'/CreateCrime';
      return  `<!DOCTYPE html>
@@ -160,7 +162,7 @@ function Police_form_template(type,data,witnessData=""){
      </body>
      </html>`
 }
-
+//---------------------------------------------edit--------------------------------------------------------
 
 async function EditCrime(req,res) {
     const CrimeDetails=req.body;
@@ -181,7 +183,7 @@ async function EditCrime(req,res) {
        )
        res.redirect("/PoliceView")// redirect to the Police view page after creating a new case
     }
-//--------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------view-------------------------------------------------------------------------
 
 async function police_view(req,res) {// send the html page as a response
 const CrimeListResult =await db.query( "select * from crime") //bring all crime DB
@@ -216,7 +218,7 @@ const CrimeList = CrimeListResult.rows // represent crime items
       
 <div id="CrimeList">
 
- ${CrimeList.map(x=>`<div onClick="window.location.href='/Police_Form_View/${x.id}'" class="CrimeItem">
+ ${CrimeList.map(x=>`<div onClick="window.location.href='/Police_Form_View/${x.id}'" class="CrimeItem"> <!-- creat the items list -->
  <h4>${x.title}</h4> 
  <a href="/PoliceForm/${x.id}" type="button"> <button class="edit"> <i class="fa fa-edit"></i>  </button></a><!--button link to edit page-->
  
@@ -232,6 +234,10 @@ const CrimeList = CrimeListResult.rows // represent crime items
 </body>
 </html>`
     )}
+
+    //-----------------------------------------------police search--------------------------------------
+
+    
     async function policeSearchCrime(req,res){
         const ResultsItemDetails= await db.query(`select * from crime where id = ${req.body.CrimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
         const CaseItemDetails = ResultsItemDetails.rows[0];
@@ -248,7 +254,7 @@ const CrimeList = CrimeListResult.rows // represent crime items
 
 
 
-//--------------------------------------------------------------------------------------------------------------------
+//----------------------------------------witness input----------------------------------------------------------------------------
 
   function witness_form_template(crimeID,crimeTitle,saveEnabled,locations){
     let times=[];
@@ -317,11 +323,13 @@ const CrimeList = CrimeListResult.rows // represent crime items
     </body>
     </html> `
 }
+
+//------------------------------------------------------witness search------------------------------------
 async function searchCrime(req,res){
   const x=req.body
-  console.log(x);
-  const result = await db.query("select location from crime group by location");
-  const locations = result.rows.map(x=>x.location);
+  
+  const result = await db.query("select location from crime group by location"); // bring a list of locations without duplicate
+  const locations = result.rows.map(x=>x.location);// the rows list is an object that includes location , converting it to a string list
   const CrimeSearchResult= await db.query(`select id,title from crime where date='${x.CrimeDate}' and type='${x.Type.trim()}' and location='${x.Location.trim()}' and time='${x.Time+":00"}'`)
   if (CrimeSearchResult.rows.length>0) res.status(200).send(witness_form_template(CrimeSearchResult.rows[0].id,CrimeSearchResult.rows[0].title,true,locations))
   else res.redirect("/WitnessForm")
@@ -331,7 +339,7 @@ async function saveWitnessInput(req,res){
     res.redirect("/")
 }
 async function witness_form(req,res) {// send the html page as a response
-    const result = await db.query("select location from crime group by location");
+    const result = await db.query("select location from crime group by location");// duplicat prevent
     const locations = result.rows.map(x=>x.location);
  
 
