@@ -66,7 +66,7 @@ async function LogIn(req,res) {
 function Police_form_create(req,res) {// send the html page as a response
 
     res.status(200).send(
-        Police_form_template("create",{type:'',location:'',date:'',time:'',userID:-1,description:'',title:''})// returns the html in create mode with the text "create" in the type 
+        Police_form_template("create",{type:'',location:'',date:new Date(),time:'',userID:-1,description:'',title:''})// returns the html in create mode with the text "create" in the type 
         
 
     )}
@@ -81,13 +81,24 @@ function Police_form_create(req,res) {// send the html page as a response
             
     
         )}
+async function police_form_view(req,res){
+    const ResultsItemDetails= await db.query(`select * from crime where id = ${req.params.crimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
+    const CaseItemDetails = ResultsItemDetails.rows[0];
+    const ResultsWitnessInput= await db.query(`select description from witness where crimeID = ${req.params.crimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
+    const WitnessInputs = ResultsWitnessInput.rows.map(x=>x.description).join("\r\n ******************************************************\r\n");
+    res.status(200).send(
+        Police_form_template("view",CaseItemDetails,WitnessInputs)// returns the html in Edit mode with the text "edit" in the type 
+        
 
-function Police_form_template(type,data){
+    )
+} 
+function Police_form_template(type,data,witnessData=""){
       let times=[];
       for(let i=0;i<24;i++){
         let time=i<10?"0"+i+":00":i+":00";
         times.push(time)
       }
+      console.log(data);
      let submitButtonText =  type==='edit'?'Save':'Create Crime';// switch the button name between save and creat depending on the form usage
      let formAction =  type==='edit'?`/EditCrime/${data.id}`:'/CreateCrime';
      return  `<!DOCTYPE html>
@@ -134,8 +145,10 @@ function Police_form_template(type,data){
              <input class="CrimeTitle" id="CrimeTitle" name="CrimeTitle" type="text" value="${data.title}">
      <br>
              <textarea placeholder="Write Crime Details Here" id="text" name="text" type="text">${data.description}</textarea><!--crime details input window-->
+             <br>
+             <textarea  id="text" name="text" type="text" style="visibility: ${type=="view"?"visible":"hidden"}" disabled>${witnessData}</textarea><!--crime details input window-->
             
-             <button type="submit">${submitButtonText}</button>
+             <button type="submit" style="visibility: ${type=="view"?"hidden":"visible"}" >${submitButtonText}</button>
            </form>
      
           
@@ -190,20 +203,20 @@ const CrimeList = CrimeListResult.rows // represent crime items
     <div class="center"> 
     <div class="witness" id="LI-Container">
         <h3> Police View </h3>
-        
+        <form action="/policeSearchCrime" method="POST">
         <label for="CrimeID">Crime ID</label> 
         <input id="CrimeID" name="CrimeID" type="text">
 
        
-        <button class="search"><i class="fa fa-search"></i></button><!--search icon-->
-      
+        <button type="submit" class="search"><i class="fa fa-search"></i></button><!--search icon-->
+      </form>
       
         <a href="/PoliceForm" type="button"> <button class="creatbutton" type="submit">Creat New Case</button></a><!--button link to create page-->
        
       
 <div id="CrimeList">
 
- ${CrimeList.map(x=>`<div class="CrimeItem">
+ ${CrimeList.map(x=>`<div onClick="window.location.href='/Police_Form_View/${x.id}'" class="CrimeItem">
  <h4>${x.title}</h4> 
  <a href="/PoliceForm/${x.id}" type="button"> <button class="edit"> <i class="fa fa-edit"></i>  </button></a><!--button link to edit page-->
  
@@ -219,6 +232,17 @@ const CrimeList = CrimeListResult.rows // represent crime items
 </body>
 </html>`
     )}
+    async function policeSearchCrime(req,res){
+        const ResultsItemDetails= await db.query(`select * from crime where id = ${req.body.CrimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
+        const CaseItemDetails = ResultsItemDetails.rows[0];
+        const ResultsWitnessInput= await db.query(`select description from witness where crimeID = ${req.body.CrimeID}`) // use crime ID send in the URL and pull the relevant details from the DB per this ID
+        const WitnessInputs = ResultsWitnessInput.rows.map(x=>x.description).join("\r\n ******************************************************\r\n");
+        res.status(200).send(
+            Police_form_template("view",CaseItemDetails,WitnessInputs)// returns the html in Edit mode with the text "edit" in the type 
+            
+    
+        )
+    }
 
     
 
@@ -226,16 +250,14 @@ const CrimeList = CrimeListResult.rows // represent crime items
 
 //--------------------------------------------------------------------------------------------------------------------
 
-
-function witness_form(req,res) {// send the html page as a response
-
+  function witness_form_template(crimeID,crimeTitle,saveEnabled,locations){
     let times=[];
     for(let i=0;i<24;i++){
       let time=i<10?"0"+i+":00":i+":00";
       times.push(time)
     }
 
-    res.status(200).send(`<!DOCTYPE html>
+    return `<!DOCTYPE html>
     <html lang="en">
     <head>
         <link rel="stylesheet" href="/C3.css">
@@ -250,7 +272,7 @@ function witness_form(req,res) {// send the html page as a response
         <div class="center"> 
         <div class="witness" id="LI-Container">
             <h3> Witness Input Form </h3>
-             <form action="witness-input" method="POST">
+             <form action="/searchCrime" method="POST">
             <!-- <label for="CrimeID">Crime ID</label> 
             <input id="CrimeID" name="CrimeID" type="text"> -->
     
@@ -267,10 +289,8 @@ function witness_form(req,res) {// send the html page as a response
     
             <label for="Location">Choose a Location:</label><!--crime location choice-->
             <select name="Location" id="Location">
-              <option value="Nazareth">Nazareth</option>
-              <option value="Kofor maser">Kofor maser</option>
-              <option value="Arab elshibli">Arab elshibli</option>
-              <option value="Haifa">Haifa</option>
+              ${locations.map(x=>`<option value="${x}">${x}</option>`)}
+             
             </select>
     
             <label for="Time">Choose Time:</label><!--time choice-->
@@ -279,11 +299,13 @@ function witness_form(req,res) {// send the html page as a response
               
               
             </select>
-            <button class="search"><i class="fa fa-search"></i></button> <!--search button icon-->
-           <h2 id="Crime-Title">Crime title appears here</h2>
+            <button type="submit" class="search"><i class="fa fa-search"></i></button> <!--search button icon-->
+            </form>
+            <form action="/addWitnessInput/${crimeID}" method="POST">
+           <h2 id="Crime-Title">${crimeTitle}</h2>
             <textarea placeholder="Write your input here" id="text" name="text" type="text"></textarea><!--text box for details input-->
            
-            <button type="submit">Save</button>
+            <button type="submit" ${saveEnabled?"":"disabled"}>Save</button>
           </form>
     
          
@@ -293,7 +315,27 @@ function witness_form(req,res) {// send the html page as a response
     
     
     </body>
-    </html>`)}
+    </html> `
+}
+async function searchCrime(req,res){
+  const x=req.body
+  console.log(x);
+  const result = await db.query("select location from crime group by location");
+  const locations = result.rows.map(x=>x.location);
+  const CrimeSearchResult= await db.query(`select id,title from crime where date='${x.CrimeDate}' and type='${x.Type.trim()}' and location='${x.Location.trim()}' and time='${x.Time+":00"}'`)
+  if (CrimeSearchResult.rows.length>0) res.status(200).send(witness_form_template(CrimeSearchResult.rows[0].id,CrimeSearchResult.rows[0].title,true,locations))
+  else res.redirect("/WitnessForm")
+}
+async function saveWitnessInput(req,res){
+    await db.query(`INSERT INTO witness (description,crimeID) VALUES ('${req.body.text}',${req.params.crimeID})`)
+    res.redirect("/")
+}
+async function witness_form(req,res) {// send the html page as a response
+    const result = await db.query("select location from crime group by location");
+    const locations = result.rows.map(x=>x.location);
+ 
+
+    res.status(200).send(witness_form_template(-1,"#######",false,locations))}
 
 
-module.exports= {C3_homepage,Police_form_create,Police_form_edit,police_view,witness_form,LogIn,CreateCrime,EditCrime}; //export function
+module.exports= {C3_homepage,Police_form_create,Police_form_edit,police_view,witness_form,LogIn,CreateCrime,EditCrime,searchCrime,saveWitnessInput,police_form_view,policeSearchCrime}; //export function
